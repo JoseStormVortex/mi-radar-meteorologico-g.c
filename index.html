@@ -415,6 +415,158 @@ windyInit(options, function(windyAPI) {
 
     async function obtenerMeteorologia(lat, lon) {
 
+    const POINT_FORECAST_KEY = "rLPe9wuFqdWMMMMUxwbQLrNRCKJP6qxDG";
+
+    try {
+
+        const respuesta = await fetch(
+            "https://api.windy.com/api/point-forecast/v2",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    lat: lat,
+                    lon: lon,
+                    model: "gfs",
+
+                    parameters: [
+                        "temp",
+                        "rh",
+                        "wind",
+                        "cape"
+                    ],
+
+                    levels: [
+                        "surface"
+                    ],
+
+                    key: POINT_FORECAST_KEY
+                })
+            }
+        );
+
+        if (!respuesta.ok) {
+            throw new Error(
+                "Windy respondió con HTTP " +
+                respuesta.status
+            );
+        }
+
+        const datos = await respuesta.json();
+
+        console.log("Datos Windy:", datos);
+
+        // Buscar el pronóstico más cercano al momento actual
+        const ahora = Date.now();
+
+        let indice = 0;
+        let diferencia = Infinity;
+
+        for (let i = 0; i < datos.ts.length; i++) {
+
+            const diferenciaActual =
+                Math.abs(datos.ts[i] - ahora);
+
+            if (diferenciaActual < diferencia) {
+                diferencia = diferenciaActual;
+                indice = i;
+            }
+        }
+
+        // ==============================
+        // TEMPERATURA
+        // Windy entrega Kelvin
+        // ==============================
+
+        const temperaturaC =
+            datos["temp-surface"][indice] - 273.15;
+
+        document.getElementById(
+            "temperatura"
+        ).textContent =
+            temperaturaC.toFixed(1);
+
+
+        // ==============================
+        // HUMEDAD
+        // ==============================
+
+        const humedad =
+            datos["rh-surface"][indice];
+
+        document.getElementById(
+            "humedad"
+        ).textContent =
+            Math.round(humedad);
+
+
+        // ==============================
+        // VIENTO
+        // Windy entrega U y V en m/s
+        // ==============================
+
+        const u =
+            datos["wind_u-surface"][indice];
+
+        const v =
+            datos["wind_v-surface"][indice];
+
+        const velocidadMS =
+            Math.sqrt(
+                (u * u) +
+                (v * v)
+            );
+
+        const velocidadKMH =
+            velocidadMS * 3.6;
+
+        document.getElementById(
+            "viento"
+        ).textContent =
+            velocidadKMH.toFixed(1);
+
+
+        // ==============================
+        // CAPE
+        // ==============================
+
+        const cape =
+            datos["cape-surface"][indice];
+
+        document.getElementById(
+            "cape"
+        ).textContent =
+            Math.round(cape);
+
+    } catch (error) {
+
+        console.error(
+            "Error obteniendo datos meteorológicos:",
+            error
+        );
+
+        document.getElementById(
+            "temperatura"
+        ).textContent = "--";
+
+        document.getElementById(
+            "humedad"
+        ).textContent = "--";
+
+        document.getElementById(
+            "viento"
+        ).textContent = "--";
+
+        document.getElementById(
+            "cape"
+        ).textContent = "--";
+    }
+}
+
         /*
         --------------------------------------------------------
         IMPORTANTE:
