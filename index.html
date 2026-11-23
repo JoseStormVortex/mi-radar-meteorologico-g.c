@@ -54,19 +54,20 @@
   </section>
 
   <section class="panel">
-    <h2>🗺️ Radar meteorológico Windy</h2>
-    <iframe id="windy-mapa" title="Mapa meteorológico interactivo de Windy" loading="eager" allowfullscreen></iframe>
+    <h2>🛰️ Windy · Satélite infrarrojo</h2>
+    <iframe id="windy-mapa" title="Satélite infrarrojo de Windy centrado en la ubicación buscada" loading="eager" allowfullscreen></iframe>
+    <p class="info">La capa satelital infrarroja de Windy está seleccionada por defecto. Las imágenes se actualizan periódicamente y no son video en directo.</p>
   </section>
 
   <section class="panel">
-    <h2>🛰️ Satélite infrarrojo GOES en tiempo casi real</h2>
-    <iframe title="Visor satelital infrarrojo NOAA" loading="lazy" allowfullscreen src="https://experience.arcgis.com/experience/8722bebcba3e42abbcc3aed13f935ab1?header=false&amp;cover=false&amp;frameborder=1"></iframe>
+    <h2>🛰️ NOAA GOES · Satélite infrarrojo alternativo</h2>
+    <iframe title="Visor satelital NOAA infrarrojo" loading="lazy" allowfullscreen src="https://experience.arcgis.com/experience/8722bebcba3e42abbcc3aed13f935ab1?header=false&amp;cover=false&amp;frameborder=1"></iframe>
   </section>
 
   <div class="info">
     <strong>Información meteorológica</strong>
     <p>Temperatura, humedad, viento y CAPE provienen de Open-Meteo. Los datos se actualizan cada 10 minutos.</p>
-    <p>El satélite es la imagen infrarroja casi en tiempo real de GOES/NOAA; existe un retraso normal de varios minutos.</p>
+    <p>La imagen satelital tiene un retraso normal de varios minutos. El visor NOAA sirve como alternativa si Windy no carga su capa.</p>
   </div>
 </main>
 
@@ -77,23 +78,21 @@
   let longitud = -103.3496;
 
   function actualizarWindy(lat, lon) {
-    const url = new URL("https://embed.windy.com/embed.html");
+    const url = new URL("https://embed.windy.com/embed2.html");
     url.search = new URLSearchParams({
-      type: "map",
-      location: "coordinates",
-      lat: lat,
-      lon: lon,
-      zoom: "8",
+      lat: String(lat),
+      lon: String(lon),
+      zoom: "7",
       level: "surface",
-      overlay: "radar",
-      product: "radar",
+      overlay: "sat",
+      product: "satellite",
       menu: "",
       message: "true",
       marker: "true",
       calendar: "now",
       pressure: "true"
     });
-    document.getElementById("windy-mapa").src = url;
+    document.getElementById("windy-mapa").src = url.toString();
   }
 
   async function obtenerMeteorologia(lat, lon) {
@@ -111,33 +110,31 @@
       if (!respuesta.ok) throw new Error("HTTP " + respuesta.status);
       const datos = await respuesta.json();
       if (!datos.current) throw new Error("Sin datos actuales");
-
       document.getElementById("temperatura").textContent = Number(datos.current.temperature_2m).toFixed(1);
       document.getElementById("humedad").textContent = Math.round(datos.current.relative_humidity_2m);
       document.getElementById("viento").textContent = Number(datos.current.wind_speed_10m).toFixed(1);
-
       let cape = "N/D";
       if (datos.hourly && datos.hourly.time && datos.hourly.cape) {
         const horaActual = String(datos.current.time).slice(0, 13) + ":00";
         const indice = datos.hourly.time.indexOf(horaActual);
-        if (indice >= 0 && Number.isFinite(datos.hourly.cape[indice])) {
-          cape = Math.round(datos.hourly.cape[indice]);
-        }
+        if (indice >= 0 && Number.isFinite(datos.hourly.cape[indice])) cape = Math.round(datos.hourly.cape[indice]);
       }
       document.getElementById("cape").textContent = cape;
       estado.textContent = "Datos actualizados · fuente: Open-Meteo";
     } catch (error) {
       console.error(error);
       estado.textContent = "No se pudieron cargar los datos. Comprueba tu conexión.";
-      ["temperatura","humedad","viento","cape"].forEach(id => document.getElementById(id).textContent = "--");
+      ["temperatura", "humedad", "viento", "cape"].forEach(id => document.getElementById(id).textContent = "--");
     }
   }
 
   async function buscarCiudad(event) {
     event.preventDefault();
     const ciudad = document.getElementById("ciudad").value.trim();
-    if (!ciudad) { document.getElementById("estado").textContent = "Escribe una ciudad."; return; }
-
+    if (!ciudad) {
+      document.getElementById("estado").textContent = "Escribe una ciudad.";
+      return;
+    }
     document.getElementById("estado").textContent = "Buscando ubicación…";
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
@@ -145,8 +142,10 @@
       const respuesta = await fetch(url, { headers: { Accept: "application/json" } });
       if (!respuesta.ok) throw new Error("HTTP " + respuesta.status);
       const resultados = await respuesta.json();
-      if (!resultados.length) { document.getElementById("estado").textContent = "No encontramos esa ciudad."; return; }
-
+      if (!resultados.length) {
+        document.getElementById("estado").textContent = "No encontramos esa ciudad.";
+        return;
+      }
       latitud = Number(resultados[0].lat);
       longitud = Number(resultados[0].lon);
       document.getElementById("ubicacion").textContent = resultados[0].display_name;
