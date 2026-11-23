@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Estación Meteorológica Stromstarlyx</title>
+  <title>Stromstarlyx - Estación Meteorológica</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #07111f; color: white; font-family: Arial, Helvetica, sans-serif; }
@@ -33,7 +33,7 @@
 </head>
 <body>
 <header>
-  <h1>🌦️ Mi Estación Meteorológica</h1>
+  <h1>🌦️ Stromstarlyx</h1>
   <p>Datos meteorológicos y satélite infrarrojo</p>
 </header>
 
@@ -54,24 +54,23 @@
   </section>
 
   <section class="panel">
-    <h2>🛰️ Windy · Satélite infrarrojo</h2>
-    <iframe id="windy-mapa" title="Satélite infrarrojo de Windy centrado en la ubicación buscada" loading="eager" allowfullscreen></iframe>
-    <p class="info">La capa satelital infrarroja de Windy está seleccionada por defecto. Las imágenes se actualizan periódicamente y no son video en directo.</p>
+    <h2>🛰️ Radar meteorológico Windy</h2>
+    <iframe id="windy-mapa" title="Radar meteorológico de Windy centrado en la ubicación buscada" loading="eager" allowfullscreen></iframe>
   </section>
 
   <section class="panel">
-    <h2>🛰️ NOAA GOES · Satélite infrarrojo alternativo</h2>
-    <iframe title="Visor satelital NOAA infrarrojo" loading="lazy" allowfullscreen src="https://experience.arcgis.com/experience/8722bebcba3e42abbcc3aed13f935ab1?header=false&amp;cover=false&amp;frameborder=1"></iframe>
+    <h2>🛰️ Satélite infrarrojo GOES en tiempo casi real</h2>
+    <iframe title="Visor satelital NOAA infrarrojo" loading="lazy" allowfullscreen src="https://www.star.nesdis.noaa.gov/goes/sector.php?sat=G16&amp;sector=wus&amp;product=GEOCOLOR&amp;length=12"></iframe>
   </section>
 
   <div class="info">
     <strong>Información meteorológica</strong>
     <p>Temperatura, humedad, viento y CAPE provienen de Open-Meteo. Los datos se actualizan cada 10 minutos.</p>
-    <p>La imagen satelital tiene un retraso normal de varios minutos. El visor NOAA sirve como alternativa si Windy no carga su capa.</p>
+    <p>Las imágenes satelitales tienen un retraso normal de varios minutos.</p>
   </div>
 </main>
 
-<footer>Mi Estación Meteorológica © 2026</footer>
+<footer>Stromstarlyx © 2026</footer>
 
 <script>
   let latitud = 20.6597;
@@ -80,17 +79,9 @@
   function actualizarWindy(lat, lon) {
     const url = new URL("https://embed.windy.com/embed2.html");
     url.search = new URLSearchParams({
-      lat: String(lat),
-      lon: String(lon),
-      zoom: "7",
-      level: "surface",
-      overlay: "sat",
-      product: "satellite",
-      menu: "",
-      message: "true",
-      marker: "true",
-      calendar: "now",
-      pressure: "true"
+      lat: String(lat), lon: String(lon), zoom: "7", level: "surface",
+      overlay: "sat", product: "satellite", menu: "", message: "true",
+      marker: "true", calendar: "now", pressure: "true"
     });
     document.getElementById("windy-mapa").src = url.toString();
   }
@@ -109,12 +100,11 @@
       const respuesta = await fetch(url);
       if (!respuesta.ok) throw new Error("HTTP " + respuesta.status);
       const datos = await respuesta.json();
-      if (!datos.current) throw new Error("Sin datos actuales");
       document.getElementById("temperatura").textContent = Number(datos.current.temperature_2m).toFixed(1);
       document.getElementById("humedad").textContent = Math.round(datos.current.relative_humidity_2m);
       document.getElementById("viento").textContent = Number(datos.current.wind_speed_10m).toFixed(1);
       let cape = "N/D";
-      if (datos.hourly && datos.hourly.time && datos.hourly.cape) {
+      if (datos.hourly?.time && datos.hourly?.cape) {
         const horaActual = String(datos.current.time).slice(0, 13) + ":00";
         const indice = datos.hourly.time.indexOf(horaActual);
         if (indice >= 0 && Number.isFinite(datos.hourly.cape[indice])) cape = Math.round(datos.hourly.cape[indice]);
@@ -131,16 +121,12 @@
   async function buscarCiudad(event) {
     event.preventDefault();
     const ciudad = document.getElementById("ciudad").value.trim();
-    if (!ciudad) {
-      document.getElementById("estado").textContent = "Escribe una ciudad.";
-      return;
-    }
+    if (!ciudad) return;
     document.getElementById("estado").textContent = "Buscando ubicación…";
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
       url.search = new URLSearchParams({ q: ciudad, format: "jsonv2", limit: "1", addressdetails: "1" });
       const respuesta = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!respuesta.ok) throw new Error("HTTP " + respuesta.status);
       const resultados = await respuesta.json();
       if (!resultados.length) {
         document.getElementById("estado").textContent = "No encontramos esa ciudad.";
@@ -152,7 +138,6 @@
       actualizarWindy(latitud, longitud);
       await obtenerMeteorologia(latitud, longitud);
     } catch (error) {
-      console.error(error);
       document.getElementById("estado").textContent = "No se pudo buscar la ciudad.";
     }
   }
